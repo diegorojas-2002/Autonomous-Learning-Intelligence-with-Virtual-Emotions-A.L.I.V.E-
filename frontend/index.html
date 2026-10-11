@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A.L.I.V.E.</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="chat-container">
+    <header class="chat-header">
+      <h2>A.L.I.V.E.</h2>
+      <button id="reset-btn" title="Reiniciar conversación">↻ Reiniciar</button>
+    </header>
+
+    <main id="chat-feed" class="chat-feed">
+      <div class="message system-message">
+        A.L.I.V.E. está en línea. Puedes iniciar la conversación o inyectar un estímulo.
+      </div>
+    </main>
+
+    <footer class="input-container">
+    
+      <div class="input-row text-row">
+        <input 
+          type="text" 
+          id="user-input" 
+          placeholder="Escribe un mensaje para A.L.I.V.E...." 
+          autocomplete="off"
+        />
+        <button id="send-btn">Enviar</button>
+      </div>
+
+      <div class="input-row pain-row">
+        <label for="pain-slider">Estímulo Nociceptivo:</label>
+        <input 
+          type="range" 
+          id="pain-slider" 
+          min="0" 
+          max="100" 
+          value="0" 
+        />
+        <div class="pain-value-wrapper">
+          <input type="number" id="pain-number" min="0" max="100" value="0" />
+          <span>%</span>
+        </div>
+        <button id="pain-btn">Inyectar Dolor</button>
+      </div>
+
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
