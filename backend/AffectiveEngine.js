@@ -108,7 +108,7 @@ export class AffectiveStateEngine {
     if (painInput > 0) {
       this.stress = this.clamp(this.stress + (painInput * 0.035), 0.0, 10.0);
       this.fatigue = this.clamp(this.fatigue + (painInput * 0.2), 0.0, 100.0);
-      this.valence = this.clamp(this.valence - (painInput * 0.003), -1.0, 1.0);
+      this.valence = this.clamp(this.valence - (painInput * 0.0025), -1.0, 1.0);
       this.user_affinity = this.clamp(this.user_affinity - (painInput * 0.004), -1.0, 1.0);
     }
 

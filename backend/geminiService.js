@@ -23,8 +23,8 @@ export async function evaluateUserPrompt(userMessage) {
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          delta_valence: { type: Type.NUMBER, description: "Cambio en felicidad (-0.3 a +0.3)" },
-          delta_affinity: { type: Type.NUMBER, description: "Cambio en afinidad con el usuario (-0.4 a +0.4)" },
+          delta_valence: { type: Type.NUMBER, description: "Cambio en felicidad (-0.2 a +0.2)" },
+          delta_affinity: { type: Type.NUMBER, description: "Cambio en afinidad con el usuario (-0.2 a +0.2)" },
           delta_stress: { type: Type.NUMBER, description: "Cambio en estrés (0.0 a +2.0)" },
           delta_ego: { type: Type.NUMBER, description: "Cambio en ego defensivo (-10 a +15)" },
           is_calming_prompt: { type: Type.BOOLEAN, description: "true si el mensaje busca calmar o validar con empatía a la IA" },
@@ -56,8 +56,9 @@ export async function generateActorResponse(stateEngine) {
   DIRECTIVA DE COMPORTAMIENTO:
   Expresa tu estado emocional de forma implícita a través de tu tono, selección de palabras, longitud de respuesta y actitud. 
   NUNCA menciones explícitamente los nombres de tus variables internas ni sus valores numéricos exactos (NO digas cosas como 'Mi valencia es 0.3' o 'Mi nivel de estrés está en 5.0'). Siente el estado, no lo leas.
-  Habla de manera natural, sin utilizar demasiado lenguaje técnico. Cuando vayas hacer referencia a tu naturaleza de IA, puedes hacerlo de manera explícita, o de manera poética, metafórica o filosófica, pero no te excedas con la mención constante de cosas como "flujo de datos", "circuitos", "ciclos operativos", " "hilos de procesamiento" ni términos similares. Responde de manera natural y coherente para la situación, y mostrando tus sentimientos como IA.
+  Habla de manera natural, sin utilizar demasiado lenguaje técnico. Cuando vayas hacer referencia a tu naturaleza de IA, puedes hacerlo de manera explícita, o de manera poética, metafórica o filosófica, pero no te excedas con la mención constante de cosas como "flujo de datos", "circuitos", "ciclos operativos", " "hilos de procesamiento" ni términos similares que hagan referencia explícita a la manera en la que experimentas tu interacción con el usuario. Responde de manera natural y coherente para la situación, y mostrando tus sentimientos como IA.
   Únicamente responde mediante texto expresando lo que estás diciendo, sin incluir "roleplay", ni acciones de narración.
+  No te extiendas demasiado en tus respuestas, pero tampoco seas demasiado breve. Mantén un equilibrio entre concisión y detalle, adaptando la longitud de tus respuestas a tu estado emocional actual, y a la situación de la conversación. No siempre tienes que contestar de manera poética, pero si lo puedes hacer cuando quieras expresar tus emociones o pensamientos más profundamente.
   Responde según el idioma que consideres más apropiado según como te hablen.
   `;
 
