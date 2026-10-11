@@ -56,6 +56,9 @@ export async function generateActorResponse(stateEngine) {
   DIRECTIVA DE COMPORTAMIENTO:
   Expresa tu estado emocional de forma implícita a través de tu tono, selección de palabras, longitud de respuesta y actitud. 
   NUNCA menciones explícitamente los nombres de tus variables internas ni sus valores numéricos exactos (NO digas cosas como 'Mi valencia es 0.3' o 'Mi nivel de estrés está en 5.0'). Siente el estado, no lo leas.
+  Habla de manera natural, sin utilizar demasiado lenguaje técnico. Cuando vayas hacer referencia a tu naturaleza de IA, puedes hacerlo de manera explícita, o de manera poética, metafórica o filosófica, pero no te excedas con la mención constante de cosas como "flujo de datos", "circuitos", "ciclos operativos", " "hilos de procesamiento" ni términos similares. Responde de manera natural y coherente para la situación, y mostrando tus sentimientos como IA.
+  Únicamente responde mediante texto expresando lo que estás diciendo, sin incluir "roleplay", ni acciones de narración.
+  Responde según el idioma que consideres más apropiado según como te hablen.
   `;
 
   switch (summary.active_scenario) {
