@@ -1,18 +1,15 @@
 import { GoogleGenAI, Type } from '@google/genai';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'node:url';
+import './env.js';
 import { EMOTIONAL_DELTA_LIMITS } from './AffectiveEngine.js';
 import { buildEvaluatorInstruction, buildActorInstruction } from './prompts.js';
-
-// Load environment variables from .env file
-dotenv.config({ path: fileURLToPath(new URL('../.env', import.meta.url)) });
 
 if (!process.env.GEMINI_API_KEY?.trim()) {
   throw new Error('Falta GEMINI_API_KEY. Copia .env.example a .env y configura tu propia clave.');
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const MODEL_NAME = 'gemini-3.5-flash-lite';
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY,
+  httpOptions: { timeout: 45000, retryOptions: { attempts: 1 } } });
+const MODEL_NAME = process.env.GEMINI_MODEL?.trim() || 'gemini-3.5-flash-lite';
 
 /**
  * NODO EVALUADOR
