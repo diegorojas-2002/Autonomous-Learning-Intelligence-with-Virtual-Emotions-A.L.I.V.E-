@@ -62,7 +62,7 @@ Requiere Node.js 24 y Postgres (local o Neon). Desde la raíz:
 
 ```sh
 npm ci
-cp .env.example .env
+cp .env.example .env.local
 # Completar GEMINI_API_KEY y DATABASE_URL
 npm start
 ```
@@ -81,7 +81,7 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/001_sessions_inte
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/002_session_credentials_and_leases.sql
 ```
 
-Para `psql`, `DATABASE_URL` debe estar exportada en la terminal; ponerla en `.env`
+Para `psql`, `DATABASE_URL` debe estar exportada en la terminal; ponerla en `.env.local`
 solo la configura para la aplicación Node. Si ya se aplicó `001`, ejecutar únicamente
 `002`. Las migraciones son transaccionales, no se ejecutan durante el build ni al
 arrancar. Las filas anteriores a `002` no tienen credencial y no son recuperables
@@ -214,3 +214,12 @@ puntos automáticos por interacción. Estos rangos del motor no son límites de 
 Mensaje y dolor requieren dos llamadas a Gemini: evaluador y actor. Los errores 429,
 503 y timeout se manejan en ambas etapas sin guardar un estado parcial. El thought_trace
 del evaluador se guarda en la misma transacción que el estado final, también para dolor.
+
+## Configuración de la infraestructura creada
+
+Ver [docs/deployment.md](docs/deployment.md) para el proyecto ALIVE de Neon, las ramas
+production/preview, el equipo Vercel previsto y el bloqueo de permisos de creación.
+El manejo del pool usa attachDatabasePool para Fluid Compute. Se añadió
+`npm run db:migrate` para aplicar SQL con registro y checksums mediante conexión directa
+una vez vinculados Vercel y las variables necesarias. Las migraciones remotas y el
+despliegue permanecen pendientes; no hay credenciales en el repositorio.

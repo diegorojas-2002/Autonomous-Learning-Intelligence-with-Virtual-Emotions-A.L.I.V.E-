@@ -1,11 +1,7 @@
 import { GoogleGenAI, Type } from '@google/genai';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'node:url';
+import './env.js';
 import { EMOTIONAL_DELTA_LIMITS } from './AffectiveEngine.js';
 import { buildEvaluatorInstruction, buildActorInstruction } from './prompts.js';
-
-// Load environment variables from .env file
-dotenv.config({ path: fileURLToPath(new URL('../.env', import.meta.url)) });
 
 if (!process.env.GEMINI_API_KEY?.trim()) {
   throw new Error('Falta GEMINI_API_KEY. Copia .env.example a .env y configura tu propia clave.');
