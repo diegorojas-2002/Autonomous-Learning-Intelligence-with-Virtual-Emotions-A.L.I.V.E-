@@ -58,48 +58,141 @@ Mi objetivo es crear una inteligencia artificial que pueda utilizarse en investi
 
 ## Desarrollo local
 
-Requiere Node.js 24. Desde la raíz del repositorio:
+Requiere Node.js 24 y Postgres (local o Neon). Desde la raíz:
 
 ```sh
 npm ci
 cp .env.example .env
-# Completar GEMINI_API_KEY en .env
+# Completar GEMINI_API_KEY y DATABASE_URL
 npm start
 ```
 
-Abrir http://localhost:3000 para usar frontend y API desde el mismo origen.
-También se puede iniciar con `npm start` desde `backend` después de instalar
-las dependencias en la raíz. Ejecutar `npm test` para las pruebas con Gemini simulado.
+Antes de iniciar, aplicar las migraciones descritas abajo. Abrir
+http://localhost:3000; frontend y API usan el mismo origen. El nombre del modelo
+se puede cambiar con `GEMINI_MODEL`; el valor predeterminado sigue siendo
+`gemini-3.5-flash-lite`. Las credenciales solo se leen en el servidor.
 
-## Preparación para Vercel y Neon
+## Base de datos y migraciones
 
-Importar el repositorio con la raíz del proyecto en `.` y el framework Express.
-Configurar el comando de instalación `npm ci` y el comando de build `npm run build`.
-El build copia `frontend/` a `public/`, donde Vercel sirve los archivos estáticos.
-`server.js` exporta Express sin abrir un puerto; `backend/server.js` inicia el servidor local.
-
-Configurar `GEMINI_API_KEY` y, opcionalmente, `GEMINI_MODEL` en las variables
-privadas del proyecto. El modelo predeterminado sigue siendo `gemini-3.5-flash-lite`.
-Conectar Neon desde el Marketplace y reservar `DATABASE_URL` para la siguiente etapa.
-No incluir credenciales en Git ni en archivos del frontend.
-
-La migración inicial se aplica una sola vez a una base nueva mediante el editor SQL
-de Neon, pegando `database/migrations/001_sessions_interactions.sql`, o mediante:
+Aplicar en orden, una sola vez, desde el editor SQL de Neon o con `psql`:
 
 ```sh
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/001_sessions_interactions.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/002_session_credentials_and_leases.sql
 ```
 
-`DATABASE_URL` debe estar exportada en la terminal para este comando; copiarla a
-`.env` no la exporta automáticamente. La migración es transaccional y no se ejecuta
-al arrancar la aplicación ni en cada build. No repetirla sobre tablas existentes.
-El campo `state` contendrá el estado completo del motor, incluido escenario y bloqueo,
-pero nunca `history`. Las actualizaciones deberán incrementar `version` y actualizar
-`updated_at` dentro de la misma transacción que inserta la interacción.
+Para `psql`, `DATABASE_URL` debe estar exportada en la terminal; ponerla en `.env`
+solo la configura para la aplicación Node. Si ya se aplicó `001`, ejecutar únicamente
+`002`. Las migraciones son transaccionales, no se ejecutan durante el build ni al
+arrancar. Las filas anteriores a `002` no tienen credencial y no son recuperables
+por el navegador; las nuevas sesiones sí la tienen.
 
-**Estado de esta etapa:** el despliegue y el esquema SQL están preparados, pero
-la aplicación todavía usa un agente y un historial compartidos en memoria. No hay
-persistencia activa, aislamiento de sesiones ni manejo específico de sobrecarga de Gemini.
-Antes de habilitarla para varios visitantes, sigue implementar sesiones anónimas,
-persistencia transaccional, historial temporal del navegador y errores del proveedor.
-No se han añadido límites por sesión ni globales.
+Usar la URL de conexión pooled de Neon para el backend, con TLS y verificación
+de certificados (por ejemplo `sslmode=verify-full`). No desactivar la verificación.
+Para Postgres local sin TLS se puede usar la URL local correspondiente.
+
+### Información persistida
+
+- `sessions`: UUID público, hash SHA-256 del secreto de la cookie, estado afectivo
+  completo sin redondear, versión, fechas, estado de retiro y reserva temporal de operación.
+- `interactions`: UUID único de operación, sesión, `thought_trace`, estado resultante y fecha.
+
+No hay columnas para mensajes, respuestas del actor, historial, intensidad del estímulo
+ni direcciones IP. Para dolor se guarda una traza genérica sin el porcentaje.
+El estado incluye escenario y bloqueo del motor; nunca incluye `history`.
+Los identificadores, versiones y reservas son metadatos para coordinar sesiones y reintentos.
+La traza del evaluador es texto generado por Gemini; su contenido puede aludir al mensaje
+que evaluó. Los registros de errores de la aplicación contienen códigos genéricos,
+no peticiones completas, cookies ni respuestas del proveedor.
+
+## Sesiones e historial temporal
+
+`POST /api/session` recupera la sesión o crea una nueva. La cookie `alive_session`
+contiene un secreto aleatorio de 256 bits; únicamente su hash se almacena en Postgres.
+La cookie es HttpOnly y SameSite=Strict, y también Secure en Vercel/producción.
+Es una cookie de sesión del navegador, sin vencimiento permanente configurado.
+Varias pestañas comparten la cookie; no representan sesiones independientes.
+
+El frontend guarda contexto y operación pendiente en `sessionStorage`, separado
+por pestaña. Envía el historial al backend, que valida roles y estructura y mantiene
+los últimos cuatro intercambios, como el motor anterior. Recargar la misma pestaña
+restaura ese contexto. Cerrar la pestaña puede perderlo; el estado se recupera
+mientras siga disponible la cookie. Si el almacenamiento del navegador está bloqueado,
+el contexto solo vive en la página actual.
+
+El backend siempre reconstruye el motor desde Postgres. La versión recibida del
+navegador solo sirve para detectar un historial desactualizado: si otra pestaña avanzó
+el estado, se sincroniza y se vacía el contexto local antes de continuar.
+
+`POST /api/chat` y `POST /api/pain` requieren `session_id`, `version`,
+`operation_id` (UUID) e `history`, además del mensaje o intensidad correspondiente.
+El UUID público no autoriza acceso: debe corresponder a la cookie del navegador.
+Cada petición reserva la sesión mediante un UPDATE atómico con vencimiento de
+120 segundos. No mantiene una transacción ni un bloqueo de conexión durante Gemini.
+Dos visitantes diferentes pueden operar al mismo tiempo. Una petición simultánea
+sobre la misma sesión recibe `SESSION_BUSY`.
+
+Solo después de completar evaluador y actor se guardan estado e interacción en
+una transacción, comprobando reserva y versión. Los fallos no avanzan el estado.
+Una reserva abandonada se puede recuperar después de vencer; su propietario antiguo
+ya no puede escribir ni liberar una reserva nueva. No hay límites de uso por sesión
+ni globales; el vencimiento coordina operaciones, no restringe su cantidad.
+
+Cada operación usa un UUID para evitar cambios duplicados. Si la respuesta se pierde,
+el botón Reintentar conserva ese UUID. Si ya se guardó la operación, el servidor devuelve
+`OPERATION_COMPLETED` y el navegador recupera el estado. La respuesta perdida no se
+puede reconstruir porque no se almacena: se inicia un contexto temporal nuevo.
+No se reenvía automáticamente la operación pendiente.
+
+`POST /api/reset` crea una nueva sesión y cambia la cookie; retira la anterior sin
+borrar sus estados ni trazas. La limpieza del historial local ocurre tras confirmación.
+El reinicio no afecta a otros visitantes. Las otras pestañas de ese mismo navegador
+se sincronizan con la nueva sesión en su siguiente operación.
+
+## Errores de Gemini
+
+- `429 / GEMINI_RATE_LIMITED`: se alcanzó un límite de solicitudes del proveedor;
+  se indica que se intente más tarde, sin prometer un tiempo de recuperación.
+- `503 / GEMINI_UNAVAILABLE`: Gemini está sobrecargado o temporalmente no disponible.
+- `504 / GEMINI_TIMEOUT`: Gemini tardó demasiado en responder.
+
+Estas respuestas aplican tanto al evaluador como al actor. El mensaje escrito se
+conserva y los controles se habilitan al fallar. Cada llamada tiene timeout de 45
+segundos y un único intento; no hay bucles automáticos de reintento. Ante un resultado
+incierto de red o base de datos se conserva la operación pendiente y se ofrece
+Reintentar o Reiniciar. No se expone el error interno de Google ni de Postgres.
+
+## Despliegue en Vercel
+
+Importar el repositorio con raíz `.`. `vercel.json` configura Express, `npm ci`,
+`npm run build` y duración máxima de función de 120 segundos (con Fluid Compute).
+El build copia `frontend/` a `public/`, servido por Vercel. `server.js` exporta
+la aplicación sin abrir un puerto; `backend/server.js` proporciona el listener local.
+
+Conectar Neon y configurar `DATABASE_URL`, `GEMINI_API_KEY` y, opcionalmente,
+`GEMINI_MODEL` en Vercel. Aplicar las migraciones antes de probar el deployment.
+Usar una base o rama de Neon distinta para Preview y producción, para que las pruebas
+no modifiquen las sesiones reales. La migración y el despliegue remoto requieren
+la configuración de esas cuentas; no son ejecutados por las pruebas locales.
+
+## Verificación y merge
+
+```sh
+npm ci
+npm run build
+npm test
+```
+
+Las pruebas usan Postgres embebido (PGlite), DOM simulado (jsdom) y respuestas HTTP
+simuladas para el SDK real de Gemini; no consumen cuota ni requieren credenciales reales.
+Verifican aislamiento, privacidad del almacenamiento, rollback, reservas, reintentos,
+reinicio, contexto del navegador y mensajes de sobrecarga. GitHub Actions ejecuta
+instalación, build y pruebas en Node 24 para las PR y los pushes a main.
+
+La rama `feat/preparar-vercel-postgres` se creó desde `main`, no desde `dev`.
+La PR #1 reúne la preparación de Vercel y esta implementación, y apunta a `main`.
+Tras revisar el diff, confirmar CI y probar un Preview conectado a Neon, se puede
+hacer Squash and merge con un mensaje en español, por ejemplo:
+`feat: desplegar ALIVE con sesiones anónimas y persistencia en Postgres`.
+Después se puede eliminar la rama. El merge no ejecuta las migraciones por sí mismo;
+si Vercel está conectado a main, puede activar automáticamente el despliegue.

@@ -10,7 +10,8 @@ if (!process.env.GEMINI_API_KEY?.trim()) {
   throw new Error('Falta GEMINI_API_KEY. Copia .env.example a .env y configura tu propia clave.');
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY,
+  httpOptions: { timeout: 45000, retryOptions: { attempts: 1 } } });
 const MODEL_NAME = process.env.GEMINI_MODEL?.trim() || 'gemini-3.5-flash-lite';
 
 /**
