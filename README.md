@@ -218,8 +218,10 @@ del evaluador se guarda en la misma transacción que el estado final, también p
 ## Configuración de la infraestructura creada
 
 Ver [docs/deployment.md](docs/deployment.md) para el proyecto ALIVE de Neon, las ramas
-production/preview, el equipo Vercel previsto y el bloqueo de permisos de creación.
+production/preview, el proyecto Vercel configurado y el Preview READY.
 El manejo del pool usa attachDatabasePool para Fluid Compute. Se añadió
 `npm run db:migrate` para aplicar SQL con registro y checksums mediante conexión directa
-una vez vinculados Vercel y las variables necesarias. Las migraciones remotas y el
-despliegue permanecen pendientes; no hay credenciales en el repositorio.
+una vez vinculados Vercel y las variables necesarias. Las migraciones 001/002
+están aplicadas en ambas ramas de Neon. El Preview de la versión integrada está
+READY; la verificación completa de chat está pendiente por el 403 de acceso al
+deployment protegido. No hay credenciales en el repositorio.
