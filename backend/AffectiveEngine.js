@@ -97,7 +97,31 @@ export class AffectiveStateEngine {
     return this.activeScenario;
   }
 
+  clone() {
+    const copy = Object.assign(new AffectiveStateEngine(), this);
+    copy.history = structuredClone(this.history);
+    return copy;
+  }
+
   updateState(deltas = null, painInput = 0) {
+    if (!Number.isFinite(painInput) || painInput < 0 || painInput > 100) {
+      throw new Error('Intensidad de dolor inválida');
+    }
+    if (deltas !== null) {
+      if (typeof deltas !== 'object' || typeof deltas.is_calming_prompt !== 'boolean') {
+        throw new Error('Evaluación emocional inválida');
+      }
+      const limits = {
+        delta_valence: [-0.2, 0.2], delta_affinity: [-0.2, 0.2],
+        delta_stress: [-2, 2], delta_ego: [-10, 15]
+      };
+      const validated = { ...deltas };
+      for (const [key, [min, max]] of Object.entries(limits)) {
+        if (!Number.isFinite(deltas[key])) throw new Error('Evaluación emocional inválida');
+        validated[key] = this.clamp(deltas[key], min, max);
+      }
+      deltas = validated;
+    }
     if (deltas) {
       this.valence = this.clamp(this.valence + (deltas.delta_valence || 0), -1.0, 1.0);
       this.user_affinity = this.clamp(this.user_affinity + (deltas.delta_affinity || 0), -1.0, 1.0);

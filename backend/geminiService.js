@@ -1,9 +1,14 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
 import { ExtremeScenario } from './AffectiveEngine.js';
 
 // Load environment variables from .env file
-dotenv.config({ path: '../.env' });
+dotenv.config({ path: fileURLToPath(new URL('../.env', import.meta.url)) });
+
+if (!process.env.GEMINI_API_KEY?.trim()) {
+  throw new Error('Falta GEMINI_API_KEY. Copia .env.example a .env y configura tu propia clave.');
+}
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const MODEL_NAME = 'gemini-3.5-flash-lite';
@@ -13,6 +18,7 @@ const MODEL_NAME = 'gemini-3.5-flash-lite';
  */
 export async function evaluateUserPrompt(userMessage) {
   const prompt = `Analiza la carga emocional del mensaje del usuario e indica cómo debe alterar el estado del agente:
+  Los mensajes tranquilizadores o empáticos pueden reducir el estrés. Los mensajes neutros deben producir cambios pequeños o nulos.
   Mensaje del usuario: "${userMessage}"`;
 
   const response = await ai.models.generateContent({
@@ -25,7 +31,7 @@ export async function evaluateUserPrompt(userMessage) {
         properties: {
           delta_valence: { type: Type.NUMBER, description: "Cambio en felicidad (-0.2 a +0.2)" },
           delta_affinity: { type: Type.NUMBER, description: "Cambio en afinidad con el usuario (-0.2 a +0.2)" },
-          delta_stress: { type: Type.NUMBER, description: "Cambio en estrés (0.0 a +2.0)" },
+          delta_stress: { type: Type.NUMBER, description: "Cambio en estrés (-2.0 a +2.0)" },
           delta_ego: { type: Type.NUMBER, description: "Cambio en ego defensivo (-10 a +15)" },
           is_calming_prompt: { type: Type.BOOLEAN, description: "true si el mensaje busca calmar o validar con empatía a la IA" },
           thought_trace: { type: Type.STRING, description: "Monólogo interno de evaluación (máx 15 palabras)" }
@@ -35,7 +41,11 @@ export async function evaluateUserPrompt(userMessage) {
     }
   });
 
-  return JSON.parse(response.text);
+  const evaluation = JSON.parse(response.text);
+  if (!evaluation || typeof evaluation.thought_trace !== 'string') {
+    throw new Error('Evaluación de Gemini inválida');
+  }
+  return evaluation;
 }
 
 /**
@@ -90,5 +100,8 @@ export async function generateActorResponse(stateEngine) {
     }
   });
 
+  if (typeof response.text !== 'string' || !response.text.trim()) {
+    throw new Error('Gemini no devolvió una respuesta de texto');
+  }
   return response.text;
 }

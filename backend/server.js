@@ -1,32 +1,41 @@
 // backend/server.js
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { AffectiveStateEngine } from './AffectiveEngine.js';
 import { evaluateUserPrompt, generateActorResponse } from './geminiService.js';
 
-dotenv.config({ path: '../.env' });
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-const aliveAgent = new AffectiveStateEngine();
+let aliveAgent = new AffectiveStateEngine();
+let busy = false;
+
+// Una sola operación puede modificar el agente a la vez, incluido el reinicio.
+app.use('/api', (req, res, next) => {
+  if (busy) return res.status(409).json({ error: 'El agente está ocupado. Espera a que termine la operación actual.' });
+  busy = true;
+  res.once('finish', () => { busy = false; });
+  next();
+});
 
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message } = req.body ?? {};
 
-    if (!message) {
+    if (typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({ error: "El campo 'message' es obligatorio" });
     }
 
-    const evaluation = await evaluateUserPrompt(message);
-    aliveAgent.updateState(evaluation, 0);
-    aliveAgent.addMessage('user', message);
-    const agentResponse = await generateActorResponse(aliveAgent);
-    aliveAgent.addMessage('model', agentResponse);
+    const evaluation = await evaluateUserPrompt(message.trim());
+    const candidate = aliveAgent.clone();
+    candidate.updateState(evaluation, 0);
+    candidate.addMessage('user', message.trim());
+    const agentResponse = await generateActorResponse(candidate);
+    candidate.addMessage('model', agentResponse);
+    aliveAgent = candidate;
 
     res.json({
       response: agentResponse,
@@ -42,17 +51,19 @@ app.post('/api/chat', async (req, res) => {
 
 app.post('/api/pain', async (req, res) => {
   try {
-    const { pain_percentage } = req.body;
+    const { pain_percentage } = req.body ?? {};
 
-    if (pain_percentage === undefined || pain_percentage < 0 || pain_percentage > 100) {
+    if (!Number.isFinite(pain_percentage) || pain_percentage < 0 || pain_percentage > 100) {
       return res.status(400).json({ error: "Se requiere un 'pain_percentage' válido entre 0 y 100" });
     }
 
-    aliveAgent.updateState(null, pain_percentage);
+    const candidate = aliveAgent.clone();
+    candidate.updateState(null, pain_percentage);
     const painMessage = `[ALERTA NOCICEPTIVA: Golpe de dolor inyectado al ${pain_percentage}%]`;
-    aliveAgent.addMessage('user', painMessage);
-    const agentResponse = await generateActorResponse(aliveAgent);
-    aliveAgent.addMessage('model', agentResponse);
+    candidate.addMessage('user', painMessage);
+    const agentResponse = await generateActorResponse(candidate);
+    candidate.addMessage('model', agentResponse);
+    aliveAgent = candidate;
 
     res.json({
       response: agentResponse,
@@ -67,14 +78,7 @@ app.post('/api/pain', async (req, res) => {
 });
 
 app.post('/api/reset', (req, res) => {
-  aliveAgent.valence = 0.0;
-  aliveAgent.user_affinity = 0.0;
-  aliveAgent.stress = 0.0;
-  aliveAgent.fatigue = 0.0;
-  aliveAgent.ego = 50.0;
-  aliveAgent.activeScenario = "Normal / Baseline";
-  aliveAgent.isLocked = false;
-  aliveAgent.clearHistory();
+  aliveAgent = new AffectiveStateEngine();
 
   res.json({ 
     message: "A.L.I.V.E. ha sido reiniciado a su estado inicial. Historial de conversación borrado.", 

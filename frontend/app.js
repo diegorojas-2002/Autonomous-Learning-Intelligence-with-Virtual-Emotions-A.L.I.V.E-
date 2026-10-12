@@ -10,17 +10,44 @@ const painNumber = document.getElementById('pain-number');
 const painBtn = document.getElementById('pain-btn');
 const resetBtn = document.getElementById('reset-btn');
 
-// --- Sincronización Slider <-> Número de Dolor ---
-painSlider.addEventListener('input', (e) => {
-  painNumber.value = e.target.value;
-});
+let busy = false;
 
-painNumber.addEventListener('input', (e) => {
-  let val = parseInt(e.target.value) || 0;
-  if (val < 0) val = 0;
-  if (val > 100) val = 100;
-  painSlider.value = val;
-});
+function setBusy(value) {
+  busy = value;
+  for (const control of [sendBtn, painBtn, resetBtn, userInput, painSlider, painNumber]) {
+    control.disabled = value;
+  }
+}
+
+function normalizePain() {
+  const parsed = Number(painNumber.value);
+  const value = Number.isFinite(parsed) ? Math.min(100, Math.max(0, Math.trunc(parsed))) : 0;
+  painNumber.value = value;
+  painSlider.value = value;
+  return value;
+}
+
+painSlider.addEventListener('input', () => { painNumber.value = painSlider.value; });
+painNumber.addEventListener('input', normalizePain);
+
+async function request(path, body) {
+  const response = await fetch(`${API_BASE}/${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) })
+  });
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error(`Respuesta inválida del servidor (HTTP ${response.status}).`);
+  }
+  if (!response.ok) throw new Error(data.error || `Error del servidor (HTTP ${response.status}).`);
+  if (path !== 'reset' && (typeof data.response !== 'string' || !data.response.trim())) {
+    throw new Error('No se recibió respuesta del servidor.');
+  }
+  return data;
+}
 
 // --- Función para renderizar mensajes en el chat ---
 function appendMessage(sender, text) {
@@ -40,66 +67,51 @@ function appendMessage(sender, text) {
   chatFeed.scrollTop = chatFeed.scrollHeight; // Auto-scroll al final
 }
 
-// --- Evento: Enviar Mensaje de Texto ---
+// --- Operaciones del agente ---
 async function handleSendMessage() {
+  if (busy) return;
   const message = userInput.value.trim();
   if (!message) return;
-
+  setBusy(true);
   appendMessage('user', message);
   userInput.value = '';
-
   try {
-    const response = await fetch(`${API_BASE}/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message })
-    });
-
-    const data = await response.json();
-
-    if (data.response) {
-      appendMessage('assistant', data.response);
-    } else {
-      appendMessage('system', 'Error: No se recibió respuesta del servidor.');
-    }
+    const data = await request('chat', { message });
+    appendMessage('assistant', data.response);
   } catch (error) {
-    console.error('Error enviando mensaje:', error);
-    appendMessage('system', 'Error de conexión con el backend.');
+    userInput.value = message;
+    appendMessage('system', `Error: ${error.message}`);
+  } finally {
+    setBusy(false);
   }
 }
 
-// --- Evento: Inyectar Dolor ---
 async function handleSendPain() {
-  const painPercentage = parseInt(painNumber.value) || 0;
-
-  appendMessage('system', `⚡ [Estímulo nociceptivo del ${painPercentage}% inyectado]`);
-
+  if (busy) return;
+  const painPercentage = normalizePain();
+  setBusy(true);
   try {
-    const response = await fetch(`${API_BASE}/pain`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pain_percentage: painPercentage })
-    });
-
-    const data = await response.json();
-
-    if (data.response) {
-      appendMessage('assistant', data.response);
-    }
+    const data = await request('pain', { pain_percentage: painPercentage });
+    appendMessage('system', `⚡ [Estímulo nociceptivo del ${painPercentage}% inyectado]`);
+    appendMessage('assistant', data.response);
   } catch (error) {
-    console.error('Error inyectando dolor:', error);
-    appendMessage('system', 'Error de conexión con el backend.');
+    appendMessage('system', `Error: ${error.message}`);
+  } finally {
+    setBusy(false);
   }
 }
 
-// --- Evento: Reiniciar Agente ---
 async function handleReset() {
+  if (busy) return;
+  setBusy(true);
   try {
-    await fetch(`${API_BASE}/reset`, { method: 'POST' });
+    await request('reset');
     chatFeed.innerHTML = '';
     appendMessage('system', 'A.L.I.V.E. ha sido reiniciado a su estado baseline.');
   } catch (error) {
-    console.error('Error al reiniciar:', error);
+    appendMessage('system', `Error: ${error.message}`);
+  } finally {
+    setBusy(false);
   }
 }
 
