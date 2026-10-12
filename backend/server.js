@@ -2,7 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import { AffectiveStateEngine } from './AffectiveEngine.js';
-import { evaluateUserPrompt, generateActorResponse } from './geminiService.js';
+import { evaluateUserPrompt, evaluatePainStimulus, generateActorResponse } from './geminiService.js';
 
 
 const app = express();
@@ -29,7 +29,7 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({ error: "El campo 'message' es obligatorio" });
     }
 
-    const evaluation = await evaluateUserPrompt(message.trim());
+    const evaluation = await evaluateUserPrompt(message.trim(), aliveAgent);
     const candidate = aliveAgent.clone();
     candidate.updateState(evaluation, 0);
     candidate.addMessage('user', message.trim());
@@ -58,7 +58,8 @@ app.post('/api/pain', async (req, res) => {
     }
 
     const candidate = aliveAgent.clone();
-    candidate.updateState(null, pain_percentage);
+    const evaluation = await evaluatePainStimulus(pain_percentage, candidate);
+    candidate.updateState(evaluation, pain_percentage, 'pain');
     const painMessage = `[ALERTA NOCICEPTIVA: Golpe de dolor inyectado al ${pain_percentage}%]`;
     candidate.addMessage('user', painMessage);
     const agentResponse = await generateActorResponse(candidate);
@@ -67,7 +68,7 @@ app.post('/api/pain', async (req, res) => {
 
     res.json({
       response: agentResponse,
-      thought_trace: `Estímulo nociceptivo procesado (${pain_percentage}% de intensidad).`,
+      thought_trace: evaluation.thought_trace,
       telemetry: aliveAgent.getStateSummary()
     });
 

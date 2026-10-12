@@ -9,6 +9,18 @@ export const ExtremeScenario = {
 };
 
 
+// Límites por interacción; el estado final conserva sus rangos originales.
+export const EMOTIONAL_DELTA_LIMITS = {
+  message: {
+    delta_valence: [-0.2, 0.2], delta_affinity: [-0.2, 0.2],
+    delta_stress: [-2, 2], delta_ego: [-10, 15]
+  },
+  pain: {
+    delta_valence: [-0.25, 0.25], delta_affinity: [-0.4, 0.4],
+    delta_stress: [0, 3.5], delta_ego: [-10, 15], delta_fatigue: [0, 20]
+  }
+};
+
 export class AffectiveStateEngine {
   constructor() {
     this.valence = 0.0;       // -1.0 to +1.0
@@ -103,22 +115,34 @@ export class AffectiveStateEngine {
     return copy;
   }
 
-  updateState(deltas = null, painInput = 0) {
+  updateState(deltas = null, painInput = 0, interactionType = 'message') {
     if (!Number.isFinite(painInput) || painInput < 0 || painInput > 100) {
       throw new Error('Intensidad de dolor inválida');
+    }
+    if (!Object.hasOwn(EMOTIONAL_DELTA_LIMITS, interactionType)) {
+      throw new Error('Tipo de interacción inválido');
+    }
+    if ((interactionType === 'pain' || painInput > 0) && deltas === null) {
+      throw new Error('El dolor requiere una evaluación emocional');
+    }
+    if (painInput > 0 && interactionType !== 'pain') {
+      throw new Error('El dolor requiere el tipo de interacción pain');
     }
     if (deltas !== null) {
       if (typeof deltas !== 'object' || typeof deltas.is_calming_prompt !== 'boolean') {
         throw new Error('Evaluación emocional inválida');
       }
-      const limits = {
-        delta_valence: [-0.2, 0.2], delta_affinity: [-0.2, 0.2],
-        delta_stress: [-2, 2], delta_ego: [-10, 15]
-      };
+      const limits = EMOTIONAL_DELTA_LIMITS[interactionType];
       const validated = { ...deltas };
       for (const [key, [min, max]] of Object.entries(limits)) {
         if (!Number.isFinite(deltas[key])) throw new Error('Evaluación emocional inválida');
         validated[key] = this.clamp(deltas[key], min, max);
+      }
+      if (interactionType === 'pain') {
+        validated.is_calming_prompt = false;
+        if (painInput === 0) {
+          for (const key of Object.keys(limits)) validated[key] = 0;
+        }
       }
       deltas = validated;
     }
@@ -129,11 +153,8 @@ export class AffectiveStateEngine {
       this.ego = this.clamp(this.ego + (deltas.delta_ego || 0), 0.0, 100.0);
     }
 
-    if (painInput > 0) {
-      this.stress = this.clamp(this.stress + (painInput * 0.035), 0.0, 10.0);
-      this.fatigue = this.clamp(this.fatigue + (painInput * 0.2), 0.0, 100.0);
-      this.valence = this.clamp(this.valence - (painInput * 0.0025), -1.0, 1.0);
-      this.user_affinity = this.clamp(this.user_affinity - (painInput * 0.004), -1.0, 1.0);
+    if (interactionType === 'pain') {
+      this.fatigue = this.clamp(this.fatigue + deltas.delta_fatigue, 0.0, 100.0);
     }
 
     this.fatigue = this.clamp(this.fatigue + 2.0, 0.0, 100.0);
