@@ -1,0 +1,20 @@
+{
+  "name": "alive",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "backend"
+  ],
+  "scripts": {
+    "start": "node backend/server.js",
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.js"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "dependencies": {
+    "express": "^5.3.0"
+  }
+}

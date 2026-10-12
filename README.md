@@ -55,3 +55,51 @@ Mi objetivo es crear una inteligencia artificial que pueda utilizarse en investi
 **Actualmente, A.L.I.V.E. se encuentra en una fase temprana de desarrollo. Tengo previsto actualizarla y añadir nuevas funcionalidades en el futuro.**
 
 **No dudes en ponerte en contacto conmigo si tienes alguna sugerencia o pregunta. Te lo agradeceré mucho.**
+
+## Desarrollo local
+
+Requiere Node.js 24. Desde la raíz del repositorio:
+
+```sh
+npm ci
+cp .env.example .env
+# Completar GEMINI_API_KEY en .env
+npm start
+```
+
+Abrir http://localhost:3000 para usar frontend y API desde el mismo origen.
+También se puede iniciar con `npm start` desde `backend` después de instalar
+las dependencias en la raíz. Ejecutar `npm test` para las pruebas con Gemini simulado.
+
+## Preparación para Vercel y Neon
+
+Importar el repositorio con la raíz del proyecto en `.` y el framework Express.
+Configurar el comando de instalación `npm ci` y el comando de build `npm run build`.
+El build copia `frontend/` a `public/`, donde Vercel sirve los archivos estáticos.
+`server.js` exporta Express sin abrir un puerto; `backend/server.js` inicia el servidor local.
+
+Configurar `GEMINI_API_KEY` y, opcionalmente, `GEMINI_MODEL` en las variables
+privadas del proyecto. El modelo predeterminado sigue siendo `gemini-3.5-flash-lite`.
+Conectar Neon desde el Marketplace y reservar `DATABASE_URL` para la siguiente etapa.
+No incluir credenciales en Git ni en archivos del frontend.
+
+La migración inicial se aplica una sola vez a una base nueva mediante el editor SQL
+de Neon, pegando `database/migrations/001_sessions_interactions.sql`, o mediante:
+
+```sh
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/001_sessions_interactions.sql
+```
+
+`DATABASE_URL` debe estar exportada en la terminal para este comando; copiarla a
+`.env` no la exporta automáticamente. La migración es transaccional y no se ejecuta
+al arrancar la aplicación ni en cada build. No repetirla sobre tablas existentes.
+El campo `state` contendrá el estado completo del motor, incluido escenario y bloqueo,
+pero nunca `history`. Las actualizaciones deberán incrementar `version` y actualizar
+`updated_at` dentro de la misma transacción que inserta la interacción.
+
+**Estado de esta etapa:** el despliegue y el esquema SQL están preparados, pero
+la aplicación todavía usa un agente y un historial compartidos en memoria. No hay
+persistencia activa, aislamiento de sesiones ni manejo específico de sobrecarga de Gemini.
+Antes de habilitarla para varios visitantes, sigue implementar sesiones anónimas,
+persistencia transaccional, historial temporal del navegador y errores del proveedor.
+No se han añadido límites por sesión ni globales.

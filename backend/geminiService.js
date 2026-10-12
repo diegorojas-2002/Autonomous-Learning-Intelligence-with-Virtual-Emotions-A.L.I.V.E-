@@ -11,7 +11,7 @@ if (!process.env.GEMINI_API_KEY?.trim()) {
 }
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const MODEL_NAME = 'gemini-3.5-flash-lite';
+const MODEL_NAME = process.env.GEMINI_MODEL?.trim() || 'gemini-3.5-flash-lite';
 
 /**
  * NODO EVALUADOR

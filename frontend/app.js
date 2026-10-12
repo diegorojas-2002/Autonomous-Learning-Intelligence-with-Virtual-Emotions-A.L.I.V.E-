@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = '/api';
 
 // Referencias a elementos del DOM
 const chatFeed = document.getElementById('chat-feed');
