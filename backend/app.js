@@ -28,7 +28,7 @@ function operationFrom(body) {
     throw new AppError(400, 'INVALID_OPERATION', 'La operación o la sesión es inválida.');
   }
 }
-export function createApp({ app = express(), store, evaluateUserPrompt, generateActorResponse,
+export function createApp({ app = express(), store, evaluateUserPrompt, evaluatePainStimulus, generateActorResponse,
   secureCookies = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL) }) {
   app.use(express.static(fileURLToPath(new URL('../frontend/', import.meta.url))));
   app.use(express.json());
@@ -71,12 +71,14 @@ export function createApp({ app = express(), store, evaluateUserPrompt, generate
         reserved = await store.acquire(row, body.operation_id, body.version);
         const agent = restore(reserved.state);
         agent.history = history;
-        const evaluation = kind === 'chat' ? await evaluateUserPrompt(body.message.trim()) : null;
-        agent.updateState(evaluation, kind === 'pain' ? body.pain_percentage : 0);
+        const evaluation = kind === 'chat'
+          ? await evaluateUserPrompt(body.message.trim(), agent)
+          : await evaluatePainStimulus(body.pain_percentage, agent);
+        agent.updateState(evaluation, kind === 'pain' ? body.pain_percentage : 0, kind === 'pain' ? 'pain' : 'message');
         const userText = kind === 'chat' ? body.message.trim() : `[ALERTA NOCICEPTIVA: Golpe de dolor inyectado al ${body.pain_percentage}%]`;
         agent.addMessage('user', userText);
         const response = await generateActorResponse(agent);
-        const thought = evaluation?.thought_trace ?? 'Estímulo nociceptivo procesado.';
+        const thought = evaluation.thought_trace;
         const saved = await store.complete(reserved, body.operation_id, snapshot(agent), thought);
         reserved = null;
         res.json({ response, thought_trace: thought, ...sessionView(saved) });

@@ -17,6 +17,7 @@ test('API: sesiones, privacidad, concurrencia, idempotencia y fallos', async t =
   const services = {
     store, secureCookies: true,
     evaluateUserPrompt: async () => { if (evaluatorFailure) throw evaluatorFailure; return evaluation; },
+    evaluatePainStimulus: async () => { if (evaluatorFailure) throw evaluatorFailure; return { ...evaluation, delta_fatigue: 5 }; },
     generateActorResponse: async agent => {
       seenHistory = structuredClone(agent.history);
       if (gate) await gate;
@@ -59,11 +60,13 @@ test('API: sesiones, privacidad, concurrencia, idempotencia y fallos', async t =
     for (const status of [429, 503]) {
       const error = Object.assign(new Error('Información interna sensible'), { status });
       if (stage === 'actor') failure = error; else evaluatorFailure = error;
-      const failed = await post('chat', operation(first.data), cookieA);
+      for (const kind of ['chat', 'pain']) {
+      const failed = await post(kind, operation(first.data, { pain_percentage: 50 }), cookieA);
       assert.equal(failed.status, status);
       assert.equal(failed.data.code, status === 429 ? 'GEMINI_RATE_LIMITED' : 'GEMINI_UNAVAILABLE');
       assert.ok(!JSON.stringify(failed.data).includes('sensible'));
       assert.equal((await post('session', {}, cookieA)).data.version, first.data.version);
+      }
       failure = evaluatorFailure = undefined;
     }
   }

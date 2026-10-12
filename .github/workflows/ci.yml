@@ -2,7 +2,7 @@ name: Verificar ALIVE
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, dev]
 jobs:
   comprobar:
     runs-on: ubuntu-latest

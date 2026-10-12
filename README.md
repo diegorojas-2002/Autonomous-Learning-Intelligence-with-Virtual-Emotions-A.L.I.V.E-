@@ -98,7 +98,8 @@ Para Postgres local sin TLS se puede usar la URL local correspondiente.
 - `interactions`: UUID único de operación, sesión, `thought_trace`, estado resultante y fecha.
 
 No hay columnas para mensajes, respuestas del actor, historial, intensidad del estímulo
-ni direcciones IP. Para dolor se guarda una traza genérica sin el porcentaje.
+ni direcciones IP. Para dolor se guarda el thought_trace del evaluador, igual que para los mensajes.
+La traza puede aludir al estímulo; no se conserva la intensidad en una columna propia.
 El estado incluye escenario y bloqueo del motor; nunca incluye `history`.
 Los identificadores, versiones y reservas son metadatos para coordinar sesiones y reintentos.
 La traza del evaluador es texto generado por Gemini; su contenido puede aludir al mensaje
@@ -187,12 +188,29 @@ Las pruebas usan Postgres embebido (PGlite), DOM simulado (jsdom) y respuestas H
 simuladas para el SDK real de Gemini; no consumen cuota ni requieren credenciales reales.
 Verifican aislamiento, privacidad del almacenamiento, rollback, reservas, reintentos,
 reinicio, contexto del navegador y mensajes de sobrecarga. GitHub Actions ejecuta
-instalación, build y pruebas en Node 24 para las PR y los pushes a main.
+instalación, build y pruebas en Node 24 para las PR y los pushes a main y dev.
 
 La rama `feat/preparar-vercel-postgres` se creó desde `main`, no desde `dev`.
-La PR #1 reúne la preparación de Vercel y esta implementación, y apunta a `main`.
+La rama incorpora también los commits de `dev`, incluidos los prompts por escenario
+y la evaluación del dolor mediante Gemini. La PR #1 reúne el conjunto y apunta a `dev`.
 Tras revisar el diff, confirmar CI y probar un Preview conectado a Neon, se puede
-hacer Squash and merge con un mensaje en español, por ejemplo:
+integrar la PR en `dev` con un mensaje en español, por ejemplo:
 `feat: desplegar ALIVE con sesiones anónimas y persistencia en Postgres`.
-Después se puede eliminar la rama. El merge no ejecuta las migraciones por sí mismo;
-si Vercel está conectado a main, puede activar automáticamente el despliegue.
+Después se puede eliminar la rama. Para publicar, abrir una PR de `dev` hacia `main`.
+El merge no ejecuta las migraciones por sí mismo; si Vercel está conectado a main,
+la integración en main puede activar automáticamente el despliegue.
+
+### Evaluador y prompts integrados desde dev
+
+Los evaluadores de mensaje y dolor reciben el estado previo reconstruido desde Postgres
+y el contexto temporal validado. El actor recibe el estado actualizado y el estímulo actual.
+`backend/prompts.js` conserva las instrucciones del evaluador y del actor por escenario.
+La intensidad de dolor se interpreta mediante Gemini; no se usan los multiplicadores
+fijos de la versión anterior. El motor aplica los cambios emocionales acotados definidos
+en dev, suma la fatiga automática una sola vez y decide las transiciones de escenario.
+Una intensidad 0 no altera las emociones ni añade fatiga de dolor; sí conserva los 2
+puntos automáticos por interacción. Estos rangos del motor no son límites de uso.
+
+Mensaje y dolor requieren dos llamadas a Gemini: evaluador y actor. Los errores 429,
+503 y timeout se manejan en ambas etapas sin guardar un estado parcial. El thought_trace
+del evaluador se guarda en la misma transacción que el estado final, también para dolor.
