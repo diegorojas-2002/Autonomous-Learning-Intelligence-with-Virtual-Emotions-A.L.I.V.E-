@@ -30,14 +30,23 @@ function operationFrom(body) {
 }
 export function createApp({ app = express(), store, evaluateUserPrompt, evaluatePainStimulus, generateActorResponse,
   secureCookies = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL) }) {
+  app.disable('x-powered-by');
+  app.use((req, res, next) => {
+    res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'");
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    next();
+  });
   app.use(express.static(fileURLToPath(new URL('../frontend/', import.meta.url))));
-  app.use(express.json());
   app.use('/api', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
     // Peticiones de navegador exclusivamente desde el mismo origen.
     if (req.headers['sec-fetch-site'] === 'cross-site') return res.status(403).json({ code: 'INVALID_ORIGIN', error: 'Origen de petición inválido.' });
     next();
   });
+  app.use(express.json());
   async function session(req, body) {
     const row = await store.find(readToken(req));
     if (!row || row.id !== body.session_id) throw new AppError(409, 'SESSION_CHANGED', 'La sesión cambió. Sincroniza antes de continuar.');
@@ -110,6 +119,12 @@ export function createApp({ app = express(), store, evaluateUserPrompt, evaluate
       }
       next(error);
     }
+  });
+  app.use((req, res) => {
+    if (req.path === '/api' || req.path.startsWith('/api/')) {
+      return res.status(404).json({ code: 'NOT_FOUND', error: 'La ruta solicitada no existe.' });
+    }
+    res.status(404).type('text').send('Página no encontrada.');
   });
   app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
