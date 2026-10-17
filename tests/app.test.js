@@ -34,7 +34,31 @@ test('API: sesiones, privacidad, concurrencia, idempotencia y fallos', async t =
       headers: { 'Content-Type': 'application/json', cookie }, body: JSON.stringify(body) });
     return { status: response.status, data: await response.json(), cookie: response.headers.get('set-cookie') };
   };
-  for (const path of ['/', '/app.js', '/style.css']) assert.equal((await fetch(base + path)).status, 200);
+  for (const path of ['/', '/app.js', '/style.css']) {
+    const response = await fetch(base + path);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('x-powered-by'), null);
+    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(response.headers.get('x-frame-options'), 'DENY');
+    assert.match(response.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+    assert.match(response.headers.get('content-security-policy'), /script-src 'self'/);
+  }
+  for (const path of ['/.env', '/.git/config', '/backend/app.js', '/README.md']) {
+    const response = await fetch(base + path);
+    assert.equal(response.status, 404);
+    assert.equal(await response.text(), 'Página no encontrada.');
+  }
+  const missing = await fetch(base + '/api/no-existe');
+  assert.equal(missing.status, 404);
+  assert.equal((await missing.json()).code, 'NOT_FOUND');
+  const malformed = await fetch(base + '/api/chat', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, body: '{' });
+  assert.equal(malformed.status, 400);
+  assert.equal(malformed.headers.get('cache-control'), 'no-store');
+  assert.equal((await malformed.json()).code, 'INVALID_BODY');
+  const foreign = await fetch(base + '/api/session', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Sec-Fetch-Site': 'cross-site' }, body: '{}' });
+  assert.equal(foreign.status, 403);
   const a = await post('session');
   const b = await post('session');
   const cookieA = a.cookie.split(';')[0];
