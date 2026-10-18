@@ -2,55 +2,95 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>A.L.I.V.E.</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="theme-color" content="#101615">
+  <title>ALIVE · Computación afectiva</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="chat-container">
-    <header class="chat-header">
-      <h2>A.L.I.V.E.</h2>
-      <button id="retry-btn" hidden>Reintentar</button>
-      <button id="reset-btn" title="Reiniciar conversación">↻ Reiniciar</button>
-    </header>
-
-    <main id="chat-feed" class="chat-feed">
-      <div class="message system-message">
-        A.L.I.V.E. está en línea. Puedes iniciar la conversación o inyectar un estímulo.
-      </div>
-    </main>
-
-    <footer class="input-container">
-    
-      <div class="input-row text-row">
-        <input 
-          type="text" 
-          id="user-input" 
-          placeholder="Escribe un mensaje para A.L.I.V.E...." 
-          autocomplete="off"
-        />
-        <button id="send-btn">Enviar</button>
-      </div>
-
-      <div class="input-row pain-row">
-        <label for="pain-slider">Estímulo Nociceptivo:</label>
-        <input 
-          type="range" 
-          id="pain-slider" 
-          min="0" 
-          max="100" 
-          value="0" 
-        />
-        <div class="pain-value-wrapper">
-          <input type="number" id="pain-number" min="0" max="100" value="0" />
-          <span>%</span>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">a<span>·</span></span><div><h1>ALIVE<span class="experimental">EXPERIMENTAL</span></h1><p>Inteligencia artificial con emociones simuladas</p></div></div>
+      <div class="header-actions">
+        <button id="about-btn" class="quiet-button">Acerca de ALIVE</button>
+        <div class="options">
+          <button id="options-btn" class="icon-button" aria-label="Opciones de sesión" aria-expanded="false" aria-controls="options-panel"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
+          <div id="options-panel" class="options-panel" hidden><button id="reset-btn">Nueva sesión <span aria-hidden="true">↗</span></button></div>
         </div>
-        <button id="pain-btn">Inyectar Dolor</button>
       </div>
-
-    </footer>
+    </header>
+    <main class="workspace">
+      <section class="conversation" aria-label="Conversación con ALIVE">
+        <div class="section-heading"><span><span class="status-dot" aria-hidden="true"></span>Conversación</span><span id="session-status" role="status">Preparando sesión…</span></div>
+        <div class="feed-wrap">
+          <div id="chat-feed" class="chat-feed" tabindex="0" role="log" aria-label="Mensajes" aria-live="polite" aria-relevant="additions"></div>
+          <button id="latest-btn" class="latest-button" hidden>↓ Ir al último mensaje</button>
+        </div>
+        <div class="composer-area">
+          <div id="activity" class="activity" role="status" hidden></div>
+          <div id="chat-notice-slot"></div>
+          <form id="composer" class="composer">
+            <label class="sr-only" for="user-input">Mensaje para ALIVE</label>
+            <textarea id="user-input" rows="1" placeholder="Escribe a ALIVE…" autocomplete="off" aria-describedby="composer-hint" disabled></textarea>
+            <button id="send-btn" class="send-button icon-button" type="submit" aria-label="Enviar mensaje" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button>
+          </form>
+          <div class="composer-footer"><span>Emociones simuladas. Una conversación por explorar.</span><span id="composer-hint">Enter para enviar · Shift + Enter para otra línea</span></div>
+        </div>
+      </section>
+      <aside class="experiment" aria-label="Experimentación">
+        <details id="stimulus-panel" open>
+          <summary><span><span class="eyebrow">EXPERIMENTACIÓN</span><span class="panel-title">Estímulo de dolor simulado</span></span><span class="disclosure" aria-hidden="true">⌄</span></summary>
+          <div class="stimulus-content">
+            <p class="panel-description">Modifica el estado afectivo simulado de ALIVE</p>
+            <div class="intensity-heading"><label for="pain-number">Intensidad</label><div class="pain-value"><input type="number" id="pain-number" min="0" max="100" step="1" value="0" inputmode="numeric" aria-label="Intensidad en porcentaje" disabled><span>%</span></div></div>
+            <label class="sr-only" for="pain-slider">Intensidad del estímulo</label>
+            <div class="range-wrap"><div class="range-track" aria-hidden="true"><div id="range-fill"></div></div><input type="range" id="pain-slider" min="0" max="100" step="1" value="0" aria-describedby="zero-help" disabled></div>
+            <div class="range-labels"><span>0 · Sin estímulo</span><span>100 · Intensidad máxima</span></div>
+            <button id="pain-btn" class="stimulus-button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg><span>Aplicar estímulo</span></button>
+            <div id="pain-notice-slot"></div>
+            <p id="zero-help" class="help">Con 0 % no se añade dolor, pero se procesa una interacción.</p>
+            <div class="simulation-note"><span aria-hidden="true">◌</span><p>Un espacio para observar.<br><strong>Sus emociones y el dolor son simulados.</strong></p></div>
+          </div>
+        </details>
+        <p class="sidebar-caption">Cada interacción da forma<br>a la siguiente respuesta.</p>
+      </aside>
+    </main>
+    <footer class="app-footer"><span>Proyecto experimental de computación afectiva</span><span aria-hidden="true">ALIVE / LAB</span></footer>
   </div>
-
+  <div id="operation-notice" class="notice" hidden><p id="notice-text" role="status" aria-live="polite" aria-atomic="true"></p><button id="retry-btn" class="quiet-button" hidden>Reintentar</button></div>
+  <div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
+  <template id="welcome-template">
+    <div class="welcome">
+      <div class="welcome-symbol" aria-hidden="true"><span></span><span></span><span></span></div>
+      <span class="eyebrow">COMPUTACIÓN AFECTIVA</span>
+      <h2>Conoce a ALIVE<span aria-hidden="true">.</span></h2>
+      <p class="welcome-description">Explora cómo una inteligencia artificial adapta sus respuestas a la conversación y a estímulos simulados</p>
+      <p class="welcome-disclaimer">Sus emociones y el dolor son simulados</p>
+      <div class="suggestions" aria-label="Sugerencias para comenzar">
+        <button type="button" data-suggestion="Hola, ALIVE. ¿Cómo te sientes hoy?"><span>Un primer encuentro</span><span>¿Cómo te sientes hoy? <b aria-hidden="true">↗</b></span></button>
+        <button type="button" data-suggestion="¿Qué significa para ti tener emociones simuladas?"><span>Un poco de curiosidad</span><span>Hablemos de tus emociones <b aria-hidden="true">↗</b></span></button>
+        <button type="button" data-suggestion="Me gustaría conocerte. ¿Cómo te describirías?"><span>Otra perspectiva</span><span>Cuéntame sobre ti <b aria-hidden="true">↗</b></span></button>
+      </div>
+    </div>
+  </template>
+  <dialog id="reset-dialog" aria-labelledby="reset-title" aria-describedby="reset-description">
+    <span class="eyebrow">EMPEZAR DE NUEVO</span><h2 id="reset-title">¿Iniciar una nueva sesión?</h2>
+    <p id="reset-description">Se restablecerá el estado emocional y se limpiará esta conversación</p>
+    <div id="reset-notice-slot"></div>
+    <div class="dialog-actions"><button id="cancel-reset" class="secondary-button" autofocus>Cancelar</button><button id="confirm-reset" class="primary-button">Iniciar nueva sesión</button></div>
+  </dialog>
+  <dialog id="about-dialog" aria-labelledby="about-title">
+    <div class="dialog-heading"><span class="eyebrow">EL PROYECTO</span><button id="close-about" class="icon-button" aria-label="Cerrar Acerca de ALIVE" autofocus>×</button></div>
+    <h2 id="about-title">Acerca de ALIVE</h2>
+    <p>ALIVE es un proyecto experimental de computación afectiva. Explora cómo un estado emocional simulado puede influir en las respuestas de un personaje de inteligencia artificial.</p>
+    <p>Conversa con ALIVE o aplica estímulos de distintas intensidades para observar sus respuestas. Las emociones y el dolor son simulados: no representan experiencias conscientes.</p>
+    <h3>Sobre tus datos</h3>
+    <p>Se utiliza una sesión sin registro, identificada mediante una cookie protegida. Postgres conserva el estado afectivo, metadatos de sesión y trazas de razonamiento (thought_trace), que pueden contener referencias a la conversación.</p>
+    <p>El contexto de los últimos intercambios y las operaciones pendientes se guardan temporalmente en esta pestaña del navegador y se envían al backend y a Gemini al interactuar. Esto no implica anonimato absoluto.</p>
+    <p>“Nueva sesión” restablece el estado y limpia la conversación visible; no elimina los registros de la base de datos.</p>
+  </dialog>
+  <script src="vendor/marked.umd.js"></script>
+  <script src="markdown.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

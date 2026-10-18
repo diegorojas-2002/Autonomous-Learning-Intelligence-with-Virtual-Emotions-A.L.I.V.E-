@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "start": "node backend/server.js",
+    "preview": "node scripts/preview.mjs",
     "build": "node scripts/build.mjs",
     "test": "node --test tests/*.test.js",
     "db:migrate": "node scripts/migrate.mjs"
@@ -16,7 +17,8 @@
     "node": "24.x"
   },
   "dependencies": {
-    "express": "^5.3.0"
+    "express": "^5.3.0",
+    "marked": "^18.1.1"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
